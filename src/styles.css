@@ -147,12 +147,14 @@ body {
   background: #d93030;
 }
 
-.btn--small {
-  padding: 4px 16px;
-  font-size: 0.95rem;
+/* .btn is declared later with the same specificity, so chain the classes. */
+.btn.btn--small {
+  padding: 3px 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
   letter-spacing: 0;
   background: #1d3557;
-  box-shadow: 0 3px 0 #00000033;
+  box-shadow: 0 2px 0 #00000033;
 }
 
 /* ---------- difficulty ---------- */
