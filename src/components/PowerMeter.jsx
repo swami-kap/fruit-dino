@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { MIN_POWER, meterValueAt } from '../game/logic.js'
 
-export default function PowerMeter({ active, onStop }) {
+export default function PowerMeter({ active, periodMs, onStop }) {
   const [value, setValue] = useState(MIN_POWER)
   const startRef = useRef(0)
 
@@ -10,16 +10,16 @@ export default function PowerMeter({ active, onStop }) {
     startRef.current = performance.now()
     let frame
     const tick = (now) => {
-      setValue(meterValueAt(now - startRef.current))
+      setValue(meterValueAt(now - startRef.current, periodMs))
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
-  }, [active])
+  }, [active, periodMs])
 
   const handleStop = () => {
     if (!active) return
-    const locked = meterValueAt(performance.now() - startRef.current)
+    const locked = meterValueAt(performance.now() - startRef.current, periodMs)
     setValue(locked)
     onStop(locked)
   }

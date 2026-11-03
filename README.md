@@ -11,9 +11,21 @@ npm test         # unit tests (Vitest)
 npm run build    # production build
 ```
 
+## Difficulty
+
+Pick a mode with the buttons at the top. Harder modes add slices (a smaller fruit target) and speed up the power meter.
+
+| Mode | Slices | Meter sweep | Fruit hit chance |
+|---|---|---|---|
+| Easy | 6 | 3 s | 1 in 6 |
+| Medium (default) | 8 | 2 s | 1 in 8 |
+| Hard | 12 | 1 s | 1 in 12 |
+
+Changing difficulty resets the game (angle, attempts, new fruit position). It is locked while the wheel is spinning or the dino is eating. Settings live in `DIFFICULTIES` in `src/game/logic.js`.
+
 ## Rules
 
-- A power meter sweeps 1 to 100 and back every 2 seconds. Click **STOP!** to lock the value.
+- A power meter sweeps 1 to 100 and back (sweep time depends on difficulty). Click **STOP!** to lock the value.
 - The wheel spins and the dino eats the segment in front of it.
 - Meat grows back and you try again. Attempts are unlimited and counted.
 - Eating the fruit wins. Passing over the fruit mid-spin does not count.
@@ -33,10 +45,10 @@ The spin animation always takes 3 seconds, so in `linear` mode a high power just
 
 ## Which segment is eaten
 
-Segment 0 starts at 12 o'clock and segments run clockwise, 45° each. For a total rotation `angle`, the segment in front of the dino is:
+Segment 0 starts at 12 o'clock and segments run clockwise, each `360 / slices` degrees wide (45° on Medium). For a total rotation `angle`, the segment in front of the dino is:
 
 ```
-floor(((360 - (angle mod 360)) mod 360) / 45)
+floor(((360 - (angle mod 360)) mod 360) / (360 / slices))
 ```
 
 A stop exactly on a boundary belongs to the later segment.
@@ -49,5 +61,5 @@ A stop exactly on a boundary belongs to the later segment.
 
 - `src/game/logic.js`: pure functions for spin math, segment lookup and the meter.
 - `src/game/reducer.js`: the game state machine.
-- `src/components/`: `Wheel`, `Dino`, `PowerMeter`, `Result`, `Confetti`, `icons`.
+- `src/components/`: `Wheel`, `Dino`, `PowerMeter`, `DifficultySelect`, `Result`, `Confetti`, `icons`.
 - `src/game/*.test.js`: unit tests for the logic and reducer.

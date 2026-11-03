@@ -1,20 +1,48 @@
 import { describe, expect, it } from 'vitest'
 import {
   BASE_SPIN_TURNS,
+  DEFAULT_DIFFICULTY,
   DEFAULT_SPIN_MODE,
+  DIFFICULTIES,
   MAX_POWER,
-  METER_PERIOD_MS,
   MIN_POWER,
-  SEGMENT_COUNT,
   SPIN_MODES,
   addRotation,
+  getDifficulty,
   getSegmentIndex,
+  isValidDifficulty,
   meterValueAt,
   placeFruit,
   powerToRotation,
+  segmentAngle,
   segmentCenterAngle,
   segmentStartAngle,
 } from './logic.js'
+
+const DIFFICULTY_CASES = Object.entries(DIFFICULTIES).map(([key, d]) => [key, d.slices, d.meterPeriodMs])
+
+describe('difficulty settings', () => {
+  it('has easy, medium and hard with more slices and a faster meter as it gets harder', () => {
+    expect(Object.keys(DIFFICULTIES)).toEqual(['easy', 'medium', 'hard'])
+    expect(DIFFICULTIES.easy.slices).toBe(6)
+    expect(DIFFICULTIES.medium.slices).toBe(8)
+    expect(DIFFICULTIES.hard.slices).toBe(12)
+    expect(DIFFICULTIES.easy.meterPeriodMs).toBeGreaterThan(DIFFICULTIES.medium.meterPeriodMs)
+    expect(DIFFICULTIES.medium.meterPeriodMs).toBeGreaterThan(DIFFICULTIES.hard.meterPeriodMs)
+  })
+
+  it('defaults to medium', () => {
+    expect(DEFAULT_DIFFICULTY).toBe('medium')
+  })
+
+  it('validates difficulty keys', () => {
+    expect(isValidDifficulty('hard')).toBe(true)
+    expect(isValidDifficulty('nightmare')).toBe(false)
+    expect(isValidDifficulty('constructor')).toBe(false)
+    expect(isValidDifficulty(undefined)).toBe(false)
+    expect(() => getDifficulty('nightmare')).toThrow(RangeError)
+  })
+})
 
 describe('powerToRotation', () => {
   it('defaults to power-landing mode', () => {
@@ -61,38 +89,54 @@ describe('powerToRotation', () => {
   })
 })
 
-describe('getSegmentIndex', () => {
+describe('getSegmentIndex (8 slices)', () => {
+  const N = 8
+
   it('returns segment 0 at the start', () => {
-    expect(getSegmentIndex(0)).toBe(0)
+    expect(getSegmentIndex(0, N)).toBe(0)
   })
 
   it('walks backwards through segments as the wheel rotates clockwise', () => {
-    expect(getSegmentIndex(10)).toBe(7)
-    expect(getSegmentIndex(44.9)).toBe(7)
-    expect(getSegmentIndex(90)).toBe(6)
-    expect(getSegmentIndex(180)).toBe(4)
-    expect(getSegmentIndex(315)).toBe(1)
-    expect(getSegmentIndex(359.9)).toBe(0)
+    expect(getSegmentIndex(10, N)).toBe(7)
+    expect(getSegmentIndex(44.9, N)).toBe(7)
+    expect(getSegmentIndex(90, N)).toBe(6)
+    expect(getSegmentIndex(180, N)).toBe(4)
+    expect(getSegmentIndex(315, N)).toBe(1)
+    expect(getSegmentIndex(359.9, N)).toBe(0)
   })
 
   it('puts an exact boundary into the later (clockwise) segment', () => {
     // angle 45 -> wheel angle 315 -> start of segment 7
-    expect(getSegmentIndex(45)).toBe(7)
-    expect(getSegmentIndex(360)).toBe(0)
+    expect(getSegmentIndex(45, N)).toBe(7)
+    expect(getSegmentIndex(360, N)).toBe(0)
   })
 
   it('wraps for angles beyond one turn', () => {
-    expect(getSegmentIndex(360 + 90)).toBe(getSegmentIndex(90))
-    expect(getSegmentIndex(720 + 10)).toBe(getSegmentIndex(10))
+    expect(getSegmentIndex(360 + 90, N)).toBe(getSegmentIndex(90, N))
+    expect(getSegmentIndex(720 + 10, N)).toBe(getSegmentIndex(10, N))
   })
+})
 
+describe.each(DIFFICULTY_CASES)('geometry at %s (%i slices)', (_key, count) => {
   it('agrees with the geometry the wheel is drawn with', () => {
     // Rotate the wheel so segment i's drawn center sits at 12 o'clock.
-    for (let i = 0; i < SEGMENT_COUNT; i++) {
-      const angle = 360 - segmentCenterAngle(i)
-      expect(getSegmentIndex(angle)).toBe(i)
+    for (let i = 0; i < count; i++) {
+      const angle = 360 - segmentCenterAngle(i, count)
+      expect(getSegmentIndex(angle, count)).toBe(i)
       // And its start edge also belongs to segment i.
-      expect(getSegmentIndex(360 - segmentStartAngle(i))).toBe(i)
+      expect(getSegmentIndex(360 - segmentStartAngle(i, count), count)).toBe(i)
+    }
+  })
+
+  it('segments tile the full circle', () => {
+    expect(segmentAngle(count) * count).toBe(360)
+  })
+
+  it('never returns an index outside the wheel', () => {
+    for (let a = 0; a < 720; a += 0.7) {
+      const idx = getSegmentIndex(a, count)
+      expect(idx).toBeGreaterThanOrEqual(0)
+      expect(idx).toBeLessThan(count)
     }
   })
 
@@ -101,6 +145,7 @@ describe('getSegmentIndex', () => {
     [SPIN_MODES.LINEAR, (power) => power * 72],
     [SPIN_MODES.POWER_LANDING, (power) => BASE_SPIN_TURNS * 3600 + power * 36],
   ])('matches exact integer math over random cumulative spins (%s)', (mode, tenthsFor) => {
+    const segmentTenths = 3600 / count
     let seed = 12345
     const rand = () => {
       seed = (seed * 1664525 + 1013904223) % 4294967296
@@ -114,35 +159,32 @@ describe('getSegmentIndex', () => {
         angle = addRotation(angle, powerToRotation(power, mode))
         tenths += tenthsFor(power)
         const wheelTenths = (3600 - (tenths % 3600)) % 3600
-        const expected = Math.floor(wheelTenths / 450)
-        expect(getSegmentIndex(angle)).toBe(expected)
+        expect(getSegmentIndex(angle, count)).toBe(Math.floor(wheelTenths / segmentTenths))
       }
     }
   })
-})
 
-describe('placeFruit', () => {
-  it('stays within the wheel for any rng output', () => {
-    expect(placeFruit(() => 0)).toBe(0)
-    expect(placeFruit(() => 0.5)).toBe(4)
-    expect(placeFruit(() => 0.9999999)).toBe(SEGMENT_COUNT - 1)
+  it('places the fruit within the wheel for any rng output', () => {
+    expect(placeFruit(count, () => 0)).toBe(0)
+    expect(placeFruit(count, () => 0.9999999)).toBe(count - 1)
+    expect(placeFruit(count, () => 0.5)).toBe(Math.floor(count / 2))
   })
 })
 
-describe('meterValueAt', () => {
+describe.each(DIFFICULTY_CASES)('meterValueAt at %s (%i slices, %i ms)', (_key, _count, period) => {
   it('starts at MIN, peaks at MAX halfway, and returns to MIN', () => {
-    expect(meterValueAt(0)).toBe(MIN_POWER)
-    expect(meterValueAt(METER_PERIOD_MS / 2)).toBe(MAX_POWER)
-    expect(meterValueAt(METER_PERIOD_MS)).toBe(MIN_POWER)
+    expect(meterValueAt(0, period)).toBe(MIN_POWER)
+    expect(meterValueAt(period / 2, period)).toBe(MAX_POWER)
+    expect(meterValueAt(period, period)).toBe(MIN_POWER)
   })
 
   it('is symmetric around the peak', () => {
-    expect(meterValueAt(500)).toBe(meterValueAt(1500))
+    expect(meterValueAt(period / 4, period)).toBe(meterValueAt((period * 3) / 4, period))
   })
 
   it('always returns a valid integer power', () => {
-    for (let t = 0; t < METER_PERIOD_MS * 3; t += 7) {
-      const v = meterValueAt(t)
+    for (let t = 0; t < period * 3; t += 7) {
+      const v = meterValueAt(t, period)
       expect(Number.isInteger(v)).toBe(true)
       expect(v).toBeGreaterThanOrEqual(MIN_POWER)
       expect(v).toBeLessThanOrEqual(MAX_POWER)
@@ -150,6 +192,14 @@ describe('meterValueAt', () => {
   })
 
   it('treats negative elapsed time as zero', () => {
-    expect(meterValueAt(-5)).toBe(MIN_POWER)
+    expect(meterValueAt(-5, period)).toBe(MIN_POWER)
+  })
+})
+
+describe('meter speed', () => {
+  it('moves faster at harder difficulties', () => {
+    const at = (key) => meterValueAt(250, DIFFICULTIES[key].meterPeriodMs)
+    expect(at('hard')).toBeGreaterThan(at('medium'))
+    expect(at('medium')).toBeGreaterThan(at('easy'))
   })
 })

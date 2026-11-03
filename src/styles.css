@@ -41,6 +41,57 @@ body {
   box-shadow: 0 3px 0 #1d355722;
 }
 
+/* ---------- difficulty ---------- */
+
+.difficulty {
+  display: flex;
+  gap: 8px;
+}
+
+.difficulty__option {
+  font: inherit;
+  font-weight: 800;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 16px;
+  border: 3px solid transparent;
+  border-radius: 14px;
+  background: #fff;
+  color: #1d3557;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #1d355733;
+}
+
+.difficulty__option small {
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.difficulty__option--easy.is-active {
+  background: #6bcb77;
+  border-color: #2e9e45;
+  color: #fff;
+}
+
+.difficulty__option--medium.is-active {
+  background: #ffb830;
+  border-color: #d98e00;
+  color: #fff;
+}
+
+.difficulty__option--hard.is-active {
+  background: #ff5252;
+  border-color: #c62828;
+  color: #fff;
+}
+
+.difficulty__option:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* ---------- stage: dino above wheel ---------- */
 
 .stage {
@@ -174,8 +225,8 @@ body {
 .wheel__item {
   display: block;
   flex: none;
-  width: calc(var(--wheel-size) * 0.15);
-  height: calc(var(--wheel-size) * 0.15);
+  width: var(--item-size);
+  height: var(--item-size);
   filter: drop-shadow(0 2px 0 #00000033);
   transform-origin: center;
 }

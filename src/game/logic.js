@@ -1,16 +1,22 @@
 // Pure game logic. No React, no DOM, no timers.
 //
-// Geometry: the wheel has SEGMENT_COUNT equal segments. In the wheel's own
-// frame, segment i spans [i * SEGMENT_ANGLE, (i + 1) * SEGMENT_ANGLE) degrees,
-// measured clockwise from 12 o'clock. The dino sits at 12 o'clock. When the
+// Geometry: the wheel has `count` equal segments (set by the difficulty). In the
+// wheel's own frame, segment i spans [i * segmentAngle(count), (i + 1) * segmentAngle(count))
+// degrees, measured clockwise from 12 o'clock. The dino sits at 12 o'clock. When the
 // wheel has rotated `angle` degrees clockwise, the wheel-frame angle under the
 // dino's mouth is (360 - angle) mod 360.
 
-export const SEGMENT_COUNT = 8
-export const SEGMENT_ANGLE = 360 / SEGMENT_COUNT
-
 export const MIN_POWER = 1
 export const MAX_POWER = 100
+
+// Difficulty: more slices means a smaller fruit target; a faster meter makes the
+// power harder to time.
+export const DIFFICULTIES = {
+  easy: { label: 'Easy', slices: 6, meterPeriodMs: 3000 },
+  medium: { label: 'Medium', slices: 8, meterPeriodMs: 2000 },
+  hard: { label: 'Hard', slices: 12, meterPeriodMs: 1000 },
+}
+export const DEFAULT_DIFFICULTY = 'medium'
 
 // Spin modes: how a locked power value turns into wheel rotation.
 //  'linear'        rotation = power * DEGREES_PER_POWER. Spin length follows power.
@@ -24,22 +30,34 @@ export const DEGREES_PER_POWER = 7.2
 export const LANDING_DEGREES_PER_POWER = 3.6
 export const BASE_SPIN_TURNS = 3
 
-export const METER_PERIOD_MS = 2000
 export const SPIN_MS = 3000
 export const EAT_MS = 1500
 
 const round3 = (n) => Math.round(n * 1000) / 1000
 
+export function isValidDifficulty(key) {
+  return typeof key === 'string' && Object.hasOwn(DIFFICULTIES, key)
+}
+
+export function getDifficulty(key) {
+  if (!isValidDifficulty(key)) throw new RangeError(`unknown difficulty: ${key}`)
+  return DIFFICULTIES[key]
+}
+
 export function normalizeAngle(angle) {
   return ((angle % 360) + 360) % 360
 }
 
-export function segmentStartAngle(index) {
-  return index * SEGMENT_ANGLE
+export function segmentAngle(count) {
+  return 360 / count
 }
 
-export function segmentCenterAngle(index) {
-  return index * SEGMENT_ANGLE + SEGMENT_ANGLE / 2
+export function segmentStartAngle(index, count) {
+  return index * segmentAngle(count)
+}
+
+export function segmentCenterAngle(index, count) {
+  return index * segmentAngle(count) + segmentAngle(count) / 2
 }
 
 export function isValidPower(power) {
@@ -66,19 +84,19 @@ export function addRotation(angle, rotation) {
 }
 
 // Which segment is in front of the dino's mouth for a given wheel rotation.
-export function getSegmentIndex(angle) {
+export function getSegmentIndex(angle, count) {
   const wheelAngle = normalizeAngle(360 - normalizeAngle(round3(angle)))
-  return Math.floor(wheelAngle / SEGMENT_ANGLE)
+  return Math.floor(wheelAngle / segmentAngle(count))
 }
 
-export function placeFruit(rng = Math.random) {
-  return Math.min(SEGMENT_COUNT - 1, Math.floor(rng() * SEGMENT_COUNT))
+export function placeFruit(count, rng = Math.random) {
+  return Math.min(count - 1, Math.floor(rng() * count))
 }
 
-// Triangle wave: MIN_POWER -> MAX_POWER -> MIN_POWER over METER_PERIOD_MS.
-export function meterValueAt(elapsedMs) {
+// Triangle wave: MIN_POWER -> MAX_POWER -> MIN_POWER over periodMs.
+export function meterValueAt(elapsedMs, periodMs) {
   const t = Math.max(0, elapsedMs)
-  const phase = (t % METER_PERIOD_MS) / METER_PERIOD_MS
+  const phase = (t % periodMs) / periodMs
   const triangle = phase < 0.5 ? phase * 2 : 2 - phase * 2
   return Math.round(MIN_POWER + triangle * (MAX_POWER - MIN_POWER))
 }
