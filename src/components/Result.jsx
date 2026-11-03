@@ -12,6 +12,17 @@ export default function Result({ phase, attempts, lastResult, onPlayAgain }) {
     )
   }
 
+  if (phase === 'lost') {
+    return (
+      <div className="result result--lost">
+        <p className="result__text">😢 Out of attempts! You lose.</p>
+        <button className="btn btn--again" onClick={onPlayAgain}>
+          Play again
+        </button>
+      </div>
+    )
+  }
+
   let text = 'Hit STOP to set your power!'
   if (phase === 'spinning') text = 'Spinning...'
   else if (phase === 'eating') text = 'Chomp chomp!'

@@ -1,5 +1,5 @@
 // Inline SVG dino, front view, mouth facing the wheel below it.
-// mood: 'idle' | 'chomp' | 'cheer'
+// mood: 'idle' | 'chomp' | 'cheer' | 'sad'
 export default function Dino({ mood }) {
   return (
     <svg
@@ -30,6 +30,9 @@ export default function Dino({ mood }) {
           <circle cx="86" cy="59" r="2.5" fill="#fff" />
           <circle cx="138" cy="59" r="2.5" fill="#fff" />
         </g>
+
+        <path className="dino__brows" d="M64 46 L96 36 M156 46 L124 36" />
+        <path className="dino__tear" d="M72 76 Q66 88 72 92 Q78 88 72 76 Z" />
 
         <ellipse cx="100" cy="78" rx="3" ry="4" fill="#2e7d32" />
         <ellipse cx="120" cy="78" rx="3" ry="4" fill="#2e7d32" />

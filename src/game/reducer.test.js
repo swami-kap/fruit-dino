@@ -185,4 +185,67 @@ describe('gameReducer', () => {
       }
     })
   })
+  describe('limited attempts', () => {
+    // power 100 -> exactly one full extra turn -> the wheel always rests on segment 0.
+    // With the fruit on segment 1 these spins never win.
+    const missSpin = [{ type: 'SPIN', power: 100 }, { type: 'SPIN_END' }, { type: 'EAT_END' }]
+    const play = (state, spins) => run(state, ...Array.from({ length: spins }).flatMap(() => missSpin))
+
+    it('medium allows 6 attempts, then loses', () => {
+      const fifth = play(createInitialState(1, 'medium'), 5)
+      expect(fifth.phase).toBe('idle')
+      expect(fifth.attempts).toBe(5)
+      const sixth = play(fifth, 1)
+      expect(sixth.phase).toBe('lost')
+      expect(sixth.attempts).toBe(6)
+    })
+
+    it('hard allows 5 attempts, then loses', () => {
+      expect(play(createInitialState(1, 'hard'), 4).phase).toBe('idle')
+      expect(play(createInitialState(1, 'hard'), 5).phase).toBe('lost')
+    })
+
+    it('easy never runs out of attempts', () => {
+      const s = play(createInitialState(1, 'easy'), 40)
+      expect(s.phase).toBe('idle')
+      expect(s.attempts).toBe(40)
+    })
+
+    it('finding the fruit on the last attempt is still a win', () => {
+      // 5 misses on segment 0, then power 10 (net 36) lands on segment 7.
+      const state = run(
+        play(createInitialState(7, 'medium'), 5),
+        { type: 'SPIN', power: 10 },
+        { type: 'SPIN_END' },
+        { type: 'EAT_END' },
+      )
+      expect(state.attempts).toBe(6)
+      expect(state.phase).toBe('won')
+    })
+
+    it('does not lose mid-spin; the result waits until eating finishes', () => {
+      const last = run(play(createInitialState(1, 'medium'), 5), { type: 'SPIN', power: 100 })
+      expect(last.attempts).toBe(6)
+      expect(last.phase).toBe('spinning')
+      expect(gameReducer(last, { type: 'SPIN_END' }).phase).toBe('eating')
+    })
+
+    it('ignores SPIN and EAT_END once lost', () => {
+      const lost = play(createInitialState(1, 'hard'), 5)
+      expect(gameReducer(lost, { type: 'SPIN', power: 10 })).toBe(lost)
+      expect(gameReducer(lost, { type: 'SPIN_END' })).toBe(lost)
+      expect(gameReducer(lost, { type: 'EAT_END' })).toBe(lost)
+    })
+
+    it('RESET after a loss keeps the difficulty and clears attempts', () => {
+      const lost = play(createInitialState(1, 'hard'), 5)
+      expect(gameReducer(lost, { type: 'RESET', fruitIndex: 3 })).toEqual(createInitialState(3, 'hard'))
+    })
+
+    it('can switch difficulty after a loss', () => {
+      const lost = play(createInitialState(1, 'hard'), 5)
+      const s = gameReducer(lost, { type: 'SET_DIFFICULTY', difficulty: 'easy', fruitIndex: 2 })
+      expect(s).toEqual(createInitialState(2, 'easy'))
+    })
+  })
 })

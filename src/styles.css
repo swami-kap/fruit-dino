@@ -41,6 +41,16 @@ body {
   box-shadow: 0 3px 0 #1d355722;
 }
 
+.attempts--last {
+  background: #fff1c2;
+  color: #b25e00;
+}
+
+.attempts--out {
+  background: #ffd6d6;
+  color: #c62828;
+}
+
 /* ---------- difficulty ---------- */
 
 .difficulty {
@@ -138,6 +148,52 @@ body {
 
 .dino--cheer {
   animation: jump 0.6s ease-in-out infinite;
+}
+
+.dino__brows,
+.dino__tear {
+  display: none;
+}
+
+.dino__brows {
+  fill: none;
+  stroke: #1b5e20;
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+
+.dino__tear {
+  fill: #4fc3f7;
+}
+
+.dino--sad .dino__brows,
+.dino--sad .dino__tear {
+  display: block;
+}
+
+.dino--sad .dino__tear {
+  animation: tear 1.4s ease-in infinite;
+}
+
+.dino--sad .dino__tail {
+  animation: none;
+  transform: rotate(25deg);
+}
+
+.dino--sad .dino__eyes {
+  animation: none;
+  transform: scaleY(0.75);
+}
+
+@keyframes tear {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(26px);
+    opacity: 0;
+  }
 }
 
 @keyframes chomp {
@@ -305,6 +361,14 @@ body {
 
 .result--won {
   animation: fade-in 0.4s ease-out 0.8s both;
+}
+
+.result--lost {
+  animation: fade-in 0.4s ease-out both;
+}
+
+.result--lost .result__text {
+  color: #c62828;
 }
 
 .meter {

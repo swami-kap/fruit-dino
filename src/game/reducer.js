@@ -3,12 +3,13 @@ import {
   DIFFICULTIES,
   addRotation,
   getSegmentIndex,
+  isOutOfAttempts,
   isValidDifficulty,
   isValidPower,
   powerToRotation,
 } from './logic.js'
 
-// phase: 'idle' | 'spinning' | 'eating' | 'won'
+// phase: 'idle' | 'spinning' | 'eating' | 'won' | 'lost'
 export function createInitialState(fruitIndex, difficulty = DEFAULT_DIFFICULTY) {
   return {
     phase: 'idle',
@@ -41,18 +42,22 @@ export function gameReducer(state, action) {
     }
     case 'EAT_END': {
       if (state.phase !== 'eating') return state
+      // Eating the fruit on the very last attempt is still a win.
       if (state.targetIndex === state.fruitIndex) {
         return { ...state, phase: 'won', lastResult: 'fruit' }
+      }
+      if (isOutOfAttempts(state.difficulty, state.attempts)) {
+        return { ...state, phase: 'lost', lastResult: 'meat' }
       }
       return { ...state, phase: 'idle', lastResult: 'meat' }
     }
     case 'RESET': {
-      if (state.phase !== 'won') return state
+      if (state.phase !== 'won' && state.phase !== 'lost') return state
       return createInitialState(action.fruitIndex, state.difficulty)
     }
     case 'SET_DIFFICULTY': {
       // Locked while the wheel is spinning or the dino is eating. Switching resets the game.
-      if (state.phase !== 'idle' && state.phase !== 'won') return state
+      if (state.phase === 'spinning' || state.phase === 'eating') return state
       if (!isValidDifficulty(action.difficulty) || action.difficulty === state.difficulty) return state
       const { slices } = DIFFICULTIES[action.difficulty]
       if (!Number.isInteger(action.fruitIndex) || action.fruitIndex < 0 || action.fruitIndex >= slices) {

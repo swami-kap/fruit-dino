@@ -13,13 +13,13 @@ npm run build    # production build
 
 ## Difficulty
 
-Pick a mode with the buttons at the top. Harder modes add slices (a smaller fruit target) and speed up the power meter.
+Pick a mode with the buttons at the top. Harder modes add slices (a smaller fruit target), speed up the power meter, and limit attempts.
 
-| Mode | Slices | Meter sweep | Fruit hit chance |
-|---|---|---|---|
-| Easy | 6 | 3 s | 1 in 6 |
-| Medium (default) | 8 | 2 s | 1 in 8 |
-| Hard | 12 | 1 s | 1 in 12 |
+| Mode | Slices | Meter sweep | Fruit hit chance | Attempts |
+|---|---|---|---|---|
+| Easy | 6 | 3 s | 1 in 6 | Unlimited |
+| Medium (default) | 8 | 2 s | 1 in 8 | 6 |
+| Hard | 12 | 1 s | 1 in 12 | 5 |
 
 Changing difficulty resets the game (angle, attempts, new fruit position). It is locked while the wheel is spinning or the dino is eating. Settings live in `DIFFICULTIES` in `src/game/logic.js`.
 
@@ -27,10 +27,11 @@ Changing difficulty resets the game (angle, attempts, new fruit position). It is
 
 - A power meter sweeps 1 to 100 and back (sweep time depends on difficulty). Click **STOP!** to lock the value.
 - The wheel spins and the dino eats the segment in front of it.
-- Meat grows back and you try again. Attempts are unlimited and counted.
-- Eating the fruit wins. Passing over the fruit mid-spin does not count.
+- Meat grows back and you try again. Attempts are counted (`2 / 6` on limited modes). Easy has no limit.
+- Eating the fruit wins, even on your last attempt. Passing over the fruit mid-spin does not count.
+- On Medium and Hard, using every attempt without eating the fruit loses the game.
 - The wheel angle is cumulative. Each spin starts where the last one stopped.
-- The fruit position is random and fixed until the game is won. **Play again** resets everything.
+- The fruit position is random and fixed until the game is won. **Play again** (after a win or a loss) resets everything.
 
 ## How power maps to the spin
 
@@ -55,7 +56,7 @@ A stop exactly on a boundary belongs to the later segment.
 
 ## Game states
 
-`idle` (meter running) → `spinning` (wheel turning) → `eating` (dino chomps) → back to `idle`, or `won` on the fruit.
+`idle` (meter running) → `spinning` (wheel turning) → `eating` (dino chomps) → back to `idle`, `won` on the fruit, or `lost` when the last attempt is used up on meat.
 
 ## Code layout
 

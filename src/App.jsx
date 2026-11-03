@@ -12,7 +12,8 @@ export default function App() {
   const [state, dispatch] = useReducer(gameReducer, undefined, () =>
     createInitialState(placeFruit(DIFFICULTIES[DEFAULT_DIFFICULTY].slices), DEFAULT_DIFFICULTY),
   )
-  const { slices, meterPeriodMs } = DIFFICULTIES[state.difficulty]
+  const { slices, meterPeriodMs, maxAttempts } = DIFFICULTIES[state.difficulty]
+  const attemptsLeft = maxAttempts === null ? null : maxAttempts - state.attempts
 
   useEffect(() => {
     if (state.phase !== 'eating') return undefined
@@ -20,7 +21,8 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [state.phase])
 
-  const mood = state.phase === 'eating' ? 'chomp' : state.phase === 'won' ? 'cheer' : 'idle'
+  const mood =
+    state.phase === 'eating' ? 'chomp' : state.phase === 'won' ? 'cheer' : state.phase === 'lost' ? 'sad' : 'idle'
   const difficultyLocked = state.phase === 'spinning' || state.phase === 'eating'
 
   return (
@@ -33,8 +35,12 @@ export default function App() {
           dispatch({ type: 'SET_DIFFICULTY', difficulty, fruitIndex: placeFruit(DIFFICULTIES[difficulty].slices) })
         }
       />
-      <p className="attempts">
-        Attempts: <strong data-testid="attempts">{state.attempts}</strong>
+      <p className={`attempts${attemptsLeft === 1 ? ' attempts--last' : ''}${state.phase === 'lost' ? ' attempts--out' : ''}`}>
+        Attempts:{' '}
+        <strong data-testid="attempts">
+          {state.attempts}
+          {maxAttempts !== null && ` / ${maxAttempts}`}
+        </strong>
       </p>
 
       <div className="stage">

@@ -10,11 +10,11 @@ export const MIN_POWER = 1
 export const MAX_POWER = 100
 
 // Difficulty: more slices means a smaller fruit target; a faster meter makes the
-// power harder to time.
+// power harder to time; maxAttempts (null = unlimited) adds a lose condition.
 export const DIFFICULTIES = {
-  easy: { label: 'Easy', slices: 6, meterPeriodMs: 3000 },
-  medium: { label: 'Medium', slices: 8, meterPeriodMs: 2000 },
-  hard: { label: 'Hard', slices: 12, meterPeriodMs: 1000 },
+  easy: { label: 'Easy', slices: 6, meterPeriodMs: 3000, maxAttempts: null },
+  medium: { label: 'Medium', slices: 8, meterPeriodMs: 2000, maxAttempts: 6 },
+  hard: { label: 'Hard', slices: 12, meterPeriodMs: 1000, maxAttempts: 5 },
 }
 export const DEFAULT_DIFFICULTY = 'medium'
 
@@ -42,6 +42,12 @@ export function isValidDifficulty(key) {
 export function getDifficulty(key) {
   if (!isValidDifficulty(key)) throw new RangeError(`unknown difficulty: ${key}`)
   return DIFFICULTIES[key]
+}
+
+// True once every allowed attempt has been used. Unlimited modes never run out.
+export function isOutOfAttempts(difficultyKey, attempts) {
+  const { maxAttempts } = getDifficulty(difficultyKey)
+  return maxAttempts !== null && attempts >= maxAttempts
 }
 
 export function normalizeAngle(angle) {
