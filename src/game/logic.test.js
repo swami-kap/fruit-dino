@@ -4,13 +4,16 @@ import {
   DEFAULT_DIFFICULTY,
   DEFAULT_SPIN_MODE,
   DIFFICULTIES,
+  MAX_ATTEMPT_LIMIT,
   MAX_POWER,
+  MIN_ATTEMPT_LIMIT,
   MIN_POWER,
   SPIN_MODES,
   addRotation,
   getDifficulty,
   getSegmentIndex,
   isOutOfAttempts,
+  isValidAttemptLimit,
   isValidDifficulty,
   meterValueAt,
   placeFruit,
@@ -32,19 +35,34 @@ describe('difficulty settings', () => {
     expect(DIFFICULTIES.medium.meterPeriodMs).toBeGreaterThan(DIFFICULTIES.hard.meterPeriodMs)
   })
 
-  it('limits attempts on medium and hard only', () => {
-    expect(DIFFICULTIES.easy.maxAttempts).toBeNull()
-    expect(DIFFICULTIES.medium.maxAttempts).toBe(6)
-    expect(DIFFICULTIES.hard.maxAttempts).toBe(5)
+  it('prefills attempt limits on medium and hard only', () => {
+    expect(DIFFICULTIES.easy.defaultMaxAttempts).toBeNull()
+    expect(DIFFICULTIES.medium.defaultMaxAttempts).toBe(6)
+    expect(DIFFICULTIES.hard.defaultMaxAttempts).toBe(5)
+  })
+
+  it('default limits are inside the allowed range', () => {
+    for (const d of [DIFFICULTIES.medium, DIFFICULTIES.hard]) {
+      expect(isValidAttemptLimit(d.defaultMaxAttempts)).toBe(true)
+    }
+  })
+
+  it('validates a player-chosen attempt limit', () => {
+    expect(isValidAttemptLimit(MIN_ATTEMPT_LIMIT)).toBe(true)
+    expect(isValidAttemptLimit(MAX_ATTEMPT_LIMIT)).toBe(true)
+    expect(isValidAttemptLimit(MIN_ATTEMPT_LIMIT - 1)).toBe(false)
+    expect(isValidAttemptLimit(MAX_ATTEMPT_LIMIT + 1)).toBe(false)
+    expect(isValidAttemptLimit(2.5)).toBe(false)
+    expect(isValidAttemptLimit(NaN)).toBe(false)
+    expect(isValidAttemptLimit('5')).toBe(false)
+    expect(isValidAttemptLimit(null)).toBe(false)
   })
 
   it('knows when attempts have run out', () => {
-    expect(isOutOfAttempts('medium', 5)).toBe(false)
-    expect(isOutOfAttempts('medium', 6)).toBe(true)
-    expect(isOutOfAttempts('hard', 4)).toBe(false)
-    expect(isOutOfAttempts('hard', 5)).toBe(true)
-    expect(isOutOfAttempts('easy', 10_000)).toBe(false)
-    expect(() => isOutOfAttempts('nightmare', 1)).toThrow(RangeError)
+    expect(isOutOfAttempts(6, 5)).toBe(false)
+    expect(isOutOfAttempts(6, 6)).toBe(true)
+    expect(isOutOfAttempts(1, 1)).toBe(true)
+    expect(isOutOfAttempts(null, 10_000)).toBe(false)
   })
 
   it('defaults to medium', () => {

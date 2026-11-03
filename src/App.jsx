@@ -1,18 +1,17 @@
 import { useEffect, useReducer } from 'react'
 import Confetti from './components/Confetti.jsx'
-import DifficultySelect from './components/DifficultySelect.jsx'
 import Dino from './components/Dino.jsx'
 import PowerMeter from './components/PowerMeter.jsx'
 import Result from './components/Result.jsx'
+import SetupScreen from './components/SetupScreen.jsx'
 import Wheel from './components/Wheel.jsx'
-import { DEFAULT_DIFFICULTY, DIFFICULTIES, EAT_MS, placeFruit } from './game/logic.js'
-import { createInitialState, gameReducer } from './game/reducer.js'
+import { DIFFICULTIES, EAT_MS, placeFruit } from './game/logic.js'
+import { createSetupState, gameReducer } from './game/reducer.js'
 
 export default function App() {
-  const [state, dispatch] = useReducer(gameReducer, undefined, () =>
-    createInitialState(placeFruit(DIFFICULTIES[DEFAULT_DIFFICULTY].slices), DEFAULT_DIFFICULTY),
-  )
-  const { slices, meterPeriodMs, maxAttempts } = DIFFICULTIES[state.difficulty]
+  const [state, dispatch] = useReducer(gameReducer, undefined, () => createSetupState())
+  const { label, slices, meterPeriodMs } = DIFFICULTIES[state.difficulty]
+  const { maxAttempts } = state
   const attemptsLeft = maxAttempts === null ? null : maxAttempts - state.attempts
 
   useEffect(() => {
@@ -21,20 +20,41 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [state.phase])
 
+  if (state.phase === 'setup') {
+    return (
+      <main className="app">
+        <SetupScreen
+          initialDifficulty={state.difficulty}
+          initialMaxAttempts={state.maxAttempts}
+          onStart={({ difficulty, maxAttempts: limit }) =>
+            dispatch({
+              type: 'START_GAME',
+              difficulty,
+              maxAttempts: limit,
+              fruitIndex: placeFruit(DIFFICULTIES[difficulty].slices),
+            })
+          }
+        />
+        <div className="ground" />
+      </main>
+    )
+  }
+
   const mood =
     state.phase === 'eating' ? 'chomp' : state.phase === 'won' ? 'cheer' : state.phase === 'lost' ? 'sad' : 'idle'
-  const difficultyLocked = state.phase === 'spinning' || state.phase === 'eating'
+  const busy = state.phase === 'spinning' || state.phase === 'eating'
 
   return (
     <main className="app" style={{ '--eat-ms': `${EAT_MS}ms` }}>
       <h1 className="title">🦖 Fruit Dino</h1>
-      <DifficultySelect
-        value={state.difficulty}
-        disabled={difficultyLocked}
-        onChange={(difficulty) =>
-          dispatch({ type: 'SET_DIFFICULTY', difficulty, fruitIndex: placeFruit(DIFFICULTIES[difficulty].slices) })
-        }
-      />
+      <div className="modebar">
+        <span className={`modechip modechip--${state.difficulty}`}>
+          {label} · {slices} slices
+        </span>
+        <button className="btn btn--small" onClick={() => dispatch({ type: 'SHOW_SETUP' })} disabled={busy}>
+          Settings
+        </button>
+      </div>
       <p className={`attempts${attemptsLeft === 1 ? ' attempts--last' : ''}${state.phase === 'lost' ? ' attempts--out' : ''}`}>
         Attempts:{' '}
         <strong data-testid="attempts">

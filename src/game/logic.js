@@ -10,13 +10,18 @@ export const MIN_POWER = 1
 export const MAX_POWER = 100
 
 // Difficulty: more slices means a smaller fruit target; a faster meter makes the
-// power harder to time; maxAttempts (null = unlimited) adds a lose condition.
+// power harder to time. defaultMaxAttempts is the prefilled attempt limit on the setup
+// screen (null = unlimited, and the player cannot set a limit for that mode).
 export const DIFFICULTIES = {
-  easy: { label: 'Easy', slices: 6, meterPeriodMs: 3000, maxAttempts: null },
-  medium: { label: 'Medium', slices: 8, meterPeriodMs: 2000, maxAttempts: 6 },
-  hard: { label: 'Hard', slices: 12, meterPeriodMs: 1000, maxAttempts: 5 },
+  easy: { label: 'Easy', slices: 6, meterPeriodMs: 3000, defaultMaxAttempts: null },
+  medium: { label: 'Medium', slices: 8, meterPeriodMs: 2000, defaultMaxAttempts: 6 },
+  hard: { label: 'Hard', slices: 12, meterPeriodMs: 1000, defaultMaxAttempts: 5 },
 }
 export const DEFAULT_DIFFICULTY = 'medium'
+
+// Range the player may choose for the attempt limit on limited modes.
+export const MIN_ATTEMPT_LIMIT = 1
+export const MAX_ATTEMPT_LIMIT = 20
 
 // Spin modes: how a locked power value turns into wheel rotation.
 //  'linear'        rotation = power * DEGREES_PER_POWER. Spin length follows power.
@@ -44,9 +49,12 @@ export function getDifficulty(key) {
   return DIFFICULTIES[key]
 }
 
-// True once every allowed attempt has been used. Unlimited modes never run out.
-export function isOutOfAttempts(difficultyKey, attempts) {
-  const { maxAttempts } = getDifficulty(difficultyKey)
+export function isValidAttemptLimit(limit) {
+  return Number.isInteger(limit) && limit >= MIN_ATTEMPT_LIMIT && limit <= MAX_ATTEMPT_LIMIT
+}
+
+// True once every allowed attempt has been used. maxAttempts null means unlimited.
+export function isOutOfAttempts(maxAttempts, attempts) {
   return maxAttempts !== null && attempts >= maxAttempts
 }
 

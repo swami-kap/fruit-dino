@@ -1,13 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import { DIFFICULTIES } from './logic.js'
-import { createInitialState, gameReducer } from './reducer.js'
+import { createInitialState, createSetupState, gameReducer } from './reducer.js'
 
 const run = (state, ...actions) => actions.reduce(gameReducer, state)
 
 describe('gameReducer', () => {
   it('starts idle with no attempts', () => {
     const s = createInitialState(3)
-    expect(s).toMatchObject({ phase: 'idle', difficulty: 'medium', angle: 0, attempts: 0, fruitIndex: 3 })
+    expect(s).toMatchObject({
+      phase: 'idle',
+      difficulty: 'medium',
+      maxAttempts: 6,
+      angle: 0,
+      attempts: 0,
+      fruitIndex: 3,
+    })
   })
 
   it('SPIN adds rotation, counts the attempt and resolves the target', () => {
@@ -128,63 +135,6 @@ describe('gameReducer', () => {
     expect(gameReducer(won, { type: 'RESET', fruitIndex: 4 })).toEqual(createInitialState(4, 'hard'))
   })
 
-  describe('SET_DIFFICULTY', () => {
-    it('resets the game with the new difficulty while idle', () => {
-      const played = run(
-        createInitialState(0),
-        { type: 'SPIN', power: 10 },
-        { type: 'SPIN_END' },
-        { type: 'EAT_END' },
-      )
-      expect(played.attempts).toBe(1)
-      const s = gameReducer(played, { type: 'SET_DIFFICULTY', difficulty: 'hard', fruitIndex: 11 })
-      expect(s).toEqual(createInitialState(11, 'hard'))
-    })
-
-    it('works after a win', () => {
-      const won = run(
-        createInitialState(7),
-        { type: 'SPIN', power: 10 },
-        { type: 'SPIN_END' },
-        { type: 'EAT_END' },
-      )
-      const s = gameReducer(won, { type: 'SET_DIFFICULTY', difficulty: 'easy', fruitIndex: 2 })
-      expect(s).toEqual(createInitialState(2, 'easy'))
-    })
-
-    it('is locked while spinning or eating', () => {
-      const spinning = run(createInitialState(0), { type: 'SPIN', power: 10 })
-      const action = { type: 'SET_DIFFICULTY', difficulty: 'hard', fruitIndex: 0 }
-      expect(gameReducer(spinning, action)).toBe(spinning)
-      const eating = gameReducer(spinning, { type: 'SPIN_END' })
-      expect(gameReducer(eating, action)).toBe(eating)
-    })
-
-    it('ignores unknown difficulties and the current difficulty', () => {
-      const s = createInitialState(0)
-      expect(gameReducer(s, { type: 'SET_DIFFICULTY', difficulty: 'nightmare', fruitIndex: 0 })).toBe(s)
-      expect(gameReducer(s, { type: 'SET_DIFFICULTY', difficulty: 'medium', fruitIndex: 0 })).toBe(s)
-    })
-
-    it('rejects a fruit position outside the new wheel', () => {
-      const s = createInitialState(0, 'hard')
-      expect(gameReducer(s, { type: 'SET_DIFFICULTY', difficulty: 'easy', fruitIndex: 6 })).toBe(s)
-      expect(gameReducer(s, { type: 'SET_DIFFICULTY', difficulty: 'easy', fruitIndex: -1 })).toBe(s)
-      expect(gameReducer(s, { type: 'SET_DIFFICULTY', difficulty: 'easy', fruitIndex: 1.5 })).toBe(s)
-      expect(gameReducer(s, { type: 'SET_DIFFICULTY', difficulty: 'easy', fruitIndex: 5 }).difficulty).toBe('easy')
-    })
-
-    it('every difficulty accepts all of its own fruit positions', () => {
-      for (const [difficulty, { slices }] of Object.entries(DIFFICULTIES)) {
-        const from = difficulty === 'medium' ? createInitialState(0, 'hard') : createInitialState(0)
-        for (let i = 0; i < slices; i++) {
-          const s = gameReducer(from, { type: 'SET_DIFFICULTY', difficulty, fruitIndex: i })
-          expect(s.difficulty).toBe(difficulty)
-          expect(s.fruitIndex).toBe(i)
-        }
-      }
-    })
-  })
   describe('limited attempts', () => {
     // power 100 -> exactly one full extra turn -> the wheel always rests on segment 0.
     // With the fruit on segment 1 these spins never win.
@@ -242,10 +192,137 @@ describe('gameReducer', () => {
       expect(gameReducer(lost, { type: 'RESET', fruitIndex: 3 })).toEqual(createInitialState(3, 'hard'))
     })
 
-    it('can switch difficulty after a loss', () => {
+    it('can return to setup after a loss, keeping the settings', () => {
       const lost = play(createInitialState(1, 'hard'), 5)
-      const s = gameReducer(lost, { type: 'SET_DIFFICULTY', difficulty: 'easy', fruitIndex: 2 })
-      expect(s).toEqual(createInitialState(2, 'easy'))
+      expect(gameReducer(lost, { type: 'SHOW_SETUP' })).toEqual(createSetupState('hard', 5))
+    })
+  })
+  describe('setup screen', () => {
+    it('starts in setup with the default difficulty and its default limit', () => {
+      expect(createSetupState()).toMatchObject({ phase: 'setup', difficulty: 'medium', maxAttempts: 6 })
+      expect(createSetupState('hard')).toMatchObject({ difficulty: 'hard', maxAttempts: 5 })
+      expect(createSetupState('easy')).toMatchObject({ difficulty: 'easy', maxAttempts: null })
+    })
+
+    it('ignores game actions during setup', () => {
+      const s = createSetupState()
+      for (const action of [
+        { type: 'SPIN', power: 10 },
+        { type: 'SPIN_END' },
+        { type: 'EAT_END' },
+        { type: 'RESET', fruitIndex: 1 },
+      ]) {
+        expect(gameReducer(s, action)).toBe(s)
+      }
+    })
+
+    it('START_GAME begins a game with the chosen difficulty and limit', () => {
+      const s = gameReducer(createSetupState(), {
+        type: 'START_GAME',
+        difficulty: 'hard',
+        maxAttempts: 9,
+        fruitIndex: 4,
+      })
+      expect(s).toEqual(createInitialState(4, 'hard', 9))
+    })
+
+    it('START_GAME on easy ignores any limit and stays unlimited', () => {
+      const s = gameReducer(createSetupState(), {
+        type: 'START_GAME',
+        difficulty: 'easy',
+        maxAttempts: 3,
+        fruitIndex: 2,
+      })
+      expect(s.maxAttempts).toBeNull()
+      expect(s.difficulty).toBe('easy')
+    })
+
+    it('START_GAME rejects invalid limits, difficulties and fruit positions', () => {
+      const setup = createSetupState()
+      const ok = { type: 'START_GAME', difficulty: 'medium', maxAttempts: 6, fruitIndex: 1 }
+      expect(gameReducer(setup, ok).phase).toBe('idle')
+      for (const bad of [
+        { maxAttempts: 0 },
+        { maxAttempts: 21 },
+        { maxAttempts: 2.5 },
+        { maxAttempts: NaN },
+        { maxAttempts: '6' },
+        { maxAttempts: null },
+        { difficulty: 'nightmare' },
+        { fruitIndex: 8 }, // medium has segments 0..7
+        { fruitIndex: -1 },
+        { fruitIndex: 1.5 },
+      ]) {
+        expect(gameReducer(setup, { ...ok, ...bad })).toBe(setup)
+      }
+    })
+
+    it('START_GAME only works from setup', () => {
+      const playing = createInitialState(1)
+      expect(
+        gameReducer(playing, { type: 'START_GAME', difficulty: 'hard', maxAttempts: 5, fruitIndex: 1 }),
+      ).toBe(playing)
+    })
+
+    it('every difficulty accepts all of its own fruit positions', () => {
+      for (const [difficulty, { slices }] of Object.entries(DIFFICULTIES)) {
+        for (let i = 0; i < slices; i++) {
+          const s = gameReducer(createSetupState(), { type: 'START_GAME', difficulty, maxAttempts: 4, fruitIndex: i })
+          expect(s.phase).toBe('idle')
+          expect(s.fruitIndex).toBe(i)
+        }
+      }
+    })
+
+    it('SHOW_SETUP returns to setup from idle, won and lost, keeping the settings', () => {
+      const idle = createInitialState(1, 'hard', 9)
+      expect(gameReducer(idle, { type: 'SHOW_SETUP' })).toEqual(createSetupState('hard', 9))
+      const won = run(
+        createInitialState(7, 'medium', 3),
+        { type: 'SPIN', power: 10 },
+        { type: 'SPIN_END' },
+        { type: 'EAT_END' },
+      )
+      expect(won.phase).toBe('won')
+      expect(gameReducer(won, { type: 'SHOW_SETUP' })).toEqual(createSetupState('medium', 3))
+    })
+
+    it('SHOW_SETUP is locked while spinning or eating', () => {
+      const spinning = run(createInitialState(0), { type: 'SPIN', power: 10 })
+      expect(gameReducer(spinning, { type: 'SHOW_SETUP' })).toBe(spinning)
+      const eating = gameReducer(spinning, { type: 'SPIN_END' })
+      expect(gameReducer(eating, { type: 'SHOW_SETUP' })).toBe(eating)
+    })
+
+    it('SHOW_SETUP does nothing when already in setup', () => {
+      const s = createSetupState()
+      expect(gameReducer(s, { type: 'SHOW_SETUP' })).toBe(s)
+    })
+  })
+
+  describe('player-chosen limit', () => {
+    const miss = [{ type: 'SPIN', power: 100 }, { type: 'SPIN_END' }, { type: 'EAT_END' }]
+    const play = (state, spins) => run(state, ...Array.from({ length: spins }).flatMap(() => miss))
+
+    it('a custom limit of 2 loses after two misses', () => {
+      const start = createInitialState(1, 'medium', 2)
+      expect(play(start, 1).phase).toBe('idle')
+      expect(play(start, 2).phase).toBe('lost')
+    })
+
+    it('a custom limit of 1 loses after the first miss', () => {
+      expect(play(createInitialState(1, 'hard', 1), 1).phase).toBe('lost')
+    })
+
+    it('a high custom limit keeps the game going past the default', () => {
+      const s = play(createInitialState(1, 'medium', 20), 8)
+      expect(s.phase).toBe('idle')
+      expect(s.attempts).toBe(8)
+    })
+
+    it('RESET and a later win keep the custom limit', () => {
+      const lost = play(createInitialState(1, 'medium', 2), 2)
+      expect(gameReducer(lost, { type: 'RESET', fruitIndex: 5 })).toEqual(createInitialState(5, 'medium', 2))
     })
   })
 })
