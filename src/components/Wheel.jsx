@@ -1,10 +1,19 @@
 import { SEGMENT_ANGLE, SEGMENT_COUNT, SPIN_MS, segmentCenterAngle, segmentStartAngle } from '../game/logic.js'
+import { FruitIcon, MeatIcon } from './icons.jsx'
 
-const COLORS = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff9f45', '#c77dff', '#00c2a8', '#ff7eb6']
+const MEAT_COLOR = '#ffcf8a'
+const FRUIT_COLOR = '#7ddc6f'
 
-const WHEEL_BACKGROUND = `conic-gradient(${COLORS.map(
-  (color, i) => `${color} ${segmentStartAngle(i)}deg ${segmentStartAngle(i) + SEGMENT_ANGLE}deg`,
-).join(', ')})`
+// Thin white divider centred on each segment boundary, over the two-colour fill.
+const DIVIDERS = `repeating-conic-gradient(from -1deg, #fff 0deg 2deg, transparent 2deg ${SEGMENT_ANGLE}deg)`
+
+function wheelBackground(fruitIndex) {
+  const fill = Array.from({ length: SEGMENT_COUNT }, (_, i) => {
+    const color = i === fruitIndex ? FRUIT_COLOR : MEAT_COLOR
+    return `${color} ${segmentStartAngle(i)}deg ${segmentStartAngle(i) + SEGMENT_ANGLE}deg`
+  }).join(', ')
+  return `${DIVIDERS}, conic-gradient(${fill})`
+}
 
 export default function Wheel({ angle, phase, fruitIndex, targetIndex, onSpinEnd }) {
   const spinning = phase === 'spinning'
@@ -21,7 +30,7 @@ export default function Wheel({ angle, phase, fruitIndex, targetIndex, onSpinEnd
       <div
         className="wheel"
         style={{
-          background: WHEEL_BACKGROUND,
+          background: wheelBackground(fruitIndex),
           transform: `rotate(${angle}deg)`,
           transition: spinning ? `transform ${SPIN_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)` : 'none',
         }}
@@ -36,10 +45,10 @@ export default function Wheel({ angle, phase, fruitIndex, targetIndex, onSpinEnd
               transform: `translate(-50%, -50%) rotate(${segmentCenterAngle(i)}deg) translateY(calc(var(--wheel-size) * -0.34))`,
             }}
           >
-            <span className={`wheel__emoji${eatenIndex === i && phase === 'eating' ? ' is-eaten' : ''}${
+            <span className={`wheel__item${eatenIndex === i && phase === 'eating' ? ' is-eaten' : ''}${
               phase === 'won' && i === fruitIndex ? ' is-gone' : ''
             }`}>
-              {i === fruitIndex ? '🍎' : '🥩'}
+              {i === fruitIndex ? <FruitIcon /> : <MeatIcon />}
             </span>
           </span>
         ))}

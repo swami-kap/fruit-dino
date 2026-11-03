@@ -11,7 +11,18 @@ export const SEGMENT_ANGLE = 360 / SEGMENT_COUNT
 
 export const MIN_POWER = 1
 export const MAX_POWER = 100
+
+// Spin modes: how a locked power value turns into wheel rotation.
+//  'linear'        rotation = power * DEGREES_PER_POWER. Spin length follows power.
+//  'power-landing' rotation = BASE_SPIN_TURNS full turns + power * LANDING_DEGREES_PER_POWER.
+//                  The spin always looks the same; only where it stops depends on power
+//                  (50 power = half a turn of net shift, 100 power = one full turn).
+export const SPIN_MODES = { LINEAR: 'linear', POWER_LANDING: 'power-landing' }
+export const DEFAULT_SPIN_MODE = SPIN_MODES.POWER_LANDING
+
 export const DEGREES_PER_POWER = 7.2
+export const LANDING_DEGREES_PER_POWER = 3.6
+export const BASE_SPIN_TURNS = 3
 
 export const METER_PERIOD_MS = 2000
 export const SPIN_MS = 3000
@@ -35,11 +46,18 @@ export function isValidPower(power) {
   return Number.isInteger(power) && power >= MIN_POWER && power <= MAX_POWER
 }
 
-export function powerToRotation(power) {
+export function powerToRotation(power, mode = DEFAULT_SPIN_MODE) {
   if (!isValidPower(power)) {
     throw new RangeError(`power must be an integer from ${MIN_POWER} to ${MAX_POWER}`)
   }
-  return round3(power * DEGREES_PER_POWER)
+  switch (mode) {
+    case SPIN_MODES.LINEAR:
+      return round3(power * DEGREES_PER_POWER)
+    case SPIN_MODES.POWER_LANDING:
+      return round3(BASE_SPIN_TURNS * 360 + power * LANDING_DEGREES_PER_POWER)
+    default:
+      throw new RangeError(`unknown spin mode: ${mode}`)
+  }
 }
 
 // Angles accumulate without wrapping so the CSS transition always spins forward.

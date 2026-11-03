@@ -10,11 +10,12 @@ describe('gameReducer', () => {
   })
 
   it('SPIN adds rotation, counts the attempt and resolves the target', () => {
+    // power 25 -> 3 turns + 90 degrees = 1170; net 90 -> wheel angle 270 -> segment 6
     const s = run(createInitialState(0), { type: 'SPIN', power: 25 })
     expect(s.phase).toBe('spinning')
-    expect(s.angle).toBe(180)
+    expect(s.angle).toBe(1170)
     expect(s.attempts).toBe(1)
-    expect(s.targetIndex).toBe(4)
+    expect(s.targetIndex).toBe(6)
   })
 
   it('accumulates angle across attempts', () => {
@@ -25,7 +26,8 @@ describe('gameReducer', () => {
       { type: 'EAT_END' },
       { type: 'SPIN', power: 20 },
     )
-    expect(s.angle).toBe(216)
+    // (1080 + 36) + (1080 + 72)
+    expect(s.angle).toBe(2268)
     expect(s.attempts).toBe(2)
   })
 
@@ -51,22 +53,22 @@ describe('gameReducer', () => {
   })
 
   it('returns to idle after eating meat', () => {
-    // power 10 -> angle 72 -> wheel angle 288 -> segment 6; fruit is at 2
+    // power 10 -> net 36 -> wheel angle 324 -> segment 7; fruit is at 2
     const s = run(
       createInitialState(2),
       { type: 'SPIN', power: 10 },
       { type: 'SPIN_END' },
       { type: 'EAT_END' },
     )
-    expect(s.targetIndex).toBe(6)
+    expect(s.targetIndex).toBe(7)
     expect(s.phase).toBe('idle')
     expect(s.lastResult).toBe('meat')
   })
 
   it('wins after eating the fruit', () => {
-    // power 10 lands on segment 6
+    // power 10 lands on segment 7
     const s = run(
-      createInitialState(6),
+      createInitialState(7),
       { type: 'SPIN', power: 10 },
       { type: 'SPIN_END' },
       { type: 'EAT_END' },
@@ -77,7 +79,7 @@ describe('gameReducer', () => {
   })
 
   it('does not count passing over the fruit mid-spin', () => {
-    // Fruit at 7. power 100 -> 720 -> segment 0. A full spin passes every segment.
+    // Fruit at 7. power 100 -> 4 full turns net -> segment 0. A spin passes every segment.
     const s = run(
       createInitialState(7),
       { type: 'SPIN', power: 100 },
@@ -94,7 +96,7 @@ describe('gameReducer', () => {
   })
 
   it('RESET only works after a win and restores a fresh game', () => {
-    const idle = createInitialState(6)
+    const idle = createInitialState(7)
     expect(gameReducer(idle, { type: 'RESET', fruitIndex: 1 })).toBe(idle)
     const won = run(
       idle,

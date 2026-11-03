@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BASE_SPIN_TURNS,
+  DEFAULT_SPIN_MODE,
   MAX_POWER,
   METER_PERIOD_MS,
   MIN_POWER,
   SEGMENT_COUNT,
+  SPIN_MODES,
   addRotation,
   getSegmentIndex,
   meterValueAt,
@@ -14,10 +17,36 @@ import {
 } from './logic.js'
 
 describe('powerToRotation', () => {
-  it('maps power to 7.2 degrees per point', () => {
-    expect(powerToRotation(1)).toBe(7.2)
-    expect(powerToRotation(50)).toBe(360)
-    expect(powerToRotation(100)).toBe(720)
+  it('defaults to power-landing mode', () => {
+    expect(DEFAULT_SPIN_MODE).toBe(SPIN_MODES.POWER_LANDING)
+    expect(powerToRotation(40)).toBe(powerToRotation(40, SPIN_MODES.POWER_LANDING))
+  })
+
+  it('linear mode maps power to 7.2 degrees per point', () => {
+    expect(powerToRotation(1, SPIN_MODES.LINEAR)).toBe(7.2)
+    expect(powerToRotation(50, SPIN_MODES.LINEAR)).toBe(360)
+    expect(powerToRotation(100, SPIN_MODES.LINEAR)).toBe(720)
+  })
+
+  it('power-landing mode adds a fixed number of turns plus 3.6 degrees per point', () => {
+    const base = BASE_SPIN_TURNS * 360
+    expect(powerToRotation(1)).toBe(base + 3.6)
+    expect(powerToRotation(50)).toBe(base + 180)
+    expect(powerToRotation(100)).toBe(base + 360)
+  })
+
+  it('power-landing spin always looks big, regardless of power', () => {
+    for (let p = MIN_POWER; p <= MAX_POWER; p++) {
+      expect(powerToRotation(p)).toBeGreaterThanOrEqual(BASE_SPIN_TURNS * 360)
+    }
+  })
+
+  it('power-landing net shift is power * 3.6 degrees (100 power = one full turn)', () => {
+    const net = (p) => Math.round((powerToRotation(p) % 360) * 1000) / 1000
+    expect(net(25)).toBe(90)
+    expect(net(50)).toBe(180)
+    expect(net(99)).toBe(356.4)
+    expect(net(100)).toBe(0) // exactly one full turn wraps back to the start
   })
 
   it('rejects out-of-range and non-integer power', () => {
@@ -25,6 +54,10 @@ describe('powerToRotation', () => {
     expect(() => powerToRotation(101)).toThrow(RangeError)
     expect(() => powerToRotation(12.5)).toThrow(RangeError)
     expect(() => powerToRotation(NaN)).toThrow(RangeError)
+  })
+
+  it('rejects an unknown mode', () => {
+    expect(() => powerToRotation(10, 'bogus')).toThrow(RangeError)
   })
 })
 
@@ -63,7 +96,11 @@ describe('getSegmentIndex', () => {
     }
   })
 
-  it('matches exact integer math over random cumulative spins', () => {
+  it.each([
+    // [mode, exact tenths of a degree one spin adds]
+    [SPIN_MODES.LINEAR, (power) => power * 72],
+    [SPIN_MODES.POWER_LANDING, (power) => BASE_SPIN_TURNS * 3600 + power * 36],
+  ])('matches exact integer math over random cumulative spins (%s)', (mode, tenthsFor) => {
     let seed = 12345
     const rand = () => {
       seed = (seed * 1664525 + 1013904223) % 4294967296
@@ -74,8 +111,8 @@ describe('getSegmentIndex', () => {
       let tenths = 0 // exact total rotation in tenths of a degree
       for (let step = 0; step < 50; step++) {
         const power = MIN_POWER + Math.floor(rand() * MAX_POWER)
-        angle = addRotation(angle, powerToRotation(power))
-        tenths += power * 72
+        angle = addRotation(angle, powerToRotation(power, mode))
+        tenths += tenthsFor(power)
         const wheelTenths = (3600 - (tenths % 3600)) % 3600
         const expected = Math.floor(wheelTenths / 450)
         expect(getSegmentIndex(angle)).toBe(expected)

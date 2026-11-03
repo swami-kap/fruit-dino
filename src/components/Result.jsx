@@ -15,7 +15,7 @@ export default function Result({ phase, attempts, lastResult, onPlayAgain }) {
   let text = 'Hit STOP to set your power!'
   if (phase === 'spinning') text = 'Spinning...'
   else if (phase === 'eating') text = 'Chomp chomp!'
-  else if (lastResult === 'meat') text = 'Yum! Still hungry... find the 🍎'
+  else if (lastResult === 'meat') text = 'Yum! Still hungry... find the fruit'
 
   return (
     <div className="result">
