@@ -65,6 +65,17 @@ A stop exactly on a boundary belongs to the later segment.
 - Only wins at the mode's default attempt limit are ranked. Games with a changed limit are saved and counted, not ranked.
 - Records are currently stored in this browser (`localStorage`). `src/game/scoreStore.js` has the `list()` and `add(record)` interface to swap for a shared backend.
 
+### Shared scoreboard (Google Sheet)
+
+By default scores stay in one browser. To share them, deploy `scoreboard-apps-script/Code.gs` as an Apps Script web app on a Google Sheet:
+
+1. Create a Google Sheet, then **Extensions > Apps Script**.
+2. Replace the editor contents with `Code.gs`, save, and run `doGet` once to grant access (it creates the `Scores` tab).
+3. **Deploy > New deployment > Web app**: execute as **Me**, access **Anyone**. Copy the `/exec` URL.
+4. Copy `.env.example` to `.env.local`, set `VITE_SCOREBOARD_URL` to that URL, and restart `npm run dev`.
+
+The endpoint is public and not authenticated: anyone with the URL can read scores or add valid-looking records. After editing the script, use **Deploy > Manage deployments > Edit > New version** so the same URL serves the change.
+
 ## Game states
 
 `setup` (settings screen) → `idle` (meter running) → `spinning` (wheel turning) → `eating` (dino chomps) → back to `idle`, `won` on the fruit, or `lost` when the last attempt is used up on meat.

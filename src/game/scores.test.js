@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { createLocalScoreStore, loadSavedName, saveName } from './scoreStore.js'
+import {
+  chooseScoreStore,
+  createLocalScoreStore,
+  createRemoteScoreStore,
+  loadSavedName,
+  saveName,
+} from './scoreStore.js'
 import {
   BOARD_SIZE,
   buildBoard,
@@ -192,5 +198,52 @@ describe('local score store', () => {
     expect(loadSavedName(storage)).toBe('Sam')
     expect(loadSavedName(null)).toBe('')
     expect(() => saveName('Sam', null)).not.toThrow()
+  })
+})
+
+const reply = (body, ok = true, status = 200) => ({ ok, status, json: async () => body })
+
+describe('remote score store', () => {
+  const URL = 'https://script.google.com/macros/s/ID/exec'
+
+  it('lists valid records from the endpoint and drops bad rows', async () => {
+    const calls = []
+    const fetchFn = async (...args) => (calls.push(args), reply({ ok: true, records: [rec(), { name: 'x' }] }))
+    const store = createRemoteScoreStore(URL, fetchFn)
+    expect(await store.list()).toEqual([rec()])
+    expect(calls[0][0]).toBe(URL)
+  })
+
+  it('posts one record as text/plain JSON', async () => {
+    const calls = []
+    const fetchFn = async (...args) => (calls.push(args), reply({ ok: true }))
+    await createRemoteScoreStore(URL, fetchFn).add(rec())
+    const [url, init] = calls[0]
+    expect(url).toBe(URL)
+    expect(init.method).toBe('POST')
+    expect(init.headers['Content-Type']).toBe('text/plain;charset=utf-8')
+    expect(JSON.parse(init.body)).toEqual(rec())
+  })
+
+  it('does not send an invalid record', async () => {
+    let called = false
+    const store = createRemoteScoreStore(URL, async () => ((called = true), reply({ ok: true })))
+    await expect(store.add(rec({ attempts: 0 }))).rejects.toThrow(RangeError)
+    expect(called).toBe(false)
+  })
+
+  it('throws on http errors, rejected requests and malformed replies', async () => {
+    const failing = (r) => createRemoteScoreStore(URL, async () => r)
+    await expect(failing(reply({}, false, 500)).list()).rejects.toThrow('500')
+    await expect(failing(reply({ ok: false, error: 'nope' })).add(rec())).rejects.toThrow('nope')
+    await expect(failing(reply({ ok: true })).list()).rejects.toThrow('no records')
+    await expect(failing(reply(null)).list()).rejects.toThrow()
+  })
+
+  it('chooses the shared store only when a url is set', async () => {
+    const local = chooseScoreStore('  ', fakeStorage())
+    await local.add(rec())
+    expect(await local.list()).toHaveLength(1)
+    expect(await chooseScoreStore(undefined, fakeStorage()).list()).toEqual([])
   })
 })
