@@ -57,6 +57,14 @@ floor(((360 - (angle mod 360)) mod 360) / (360 / slices))
 
 A stop exactly on a boundary belongs to the later segment.
 
+## Scoreboard
+
+- Enter your name (1 to 20 characters, remembered in the browser) on the setup screen.
+- Every finished game (win or loss) saves one record: name, mode, attempts used, attempt limit, result, time.
+- **Scoreboard** (setup screen and in-game) shows the top 10 per mode: one best win per player (fewest attempts, earliest win on a tie), plus games played.
+- Only wins at the mode's default attempt limit are ranked. Games with a changed limit are saved and counted, not ranked.
+- Records are currently stored in this browser (`localStorage`). `src/game/scoreStore.js` has the `list()` and `add(record)` interface to swap for a shared backend.
+
 ## Game states
 
 `setup` (settings screen) → `idle` (meter running) → `spinning` (wheel turning) → `eating` (dino chomps) → back to `idle`, `won` on the fruit, or `lost` when the last attempt is used up on meat.
@@ -65,5 +73,6 @@ A stop exactly on a boundary belongs to the later segment.
 
 - `src/game/logic.js`: pure functions for spin math, segment lookup and the meter.
 - `src/game/reducer.js`: the game state machine.
-- `src/components/`: `Wheel`, `Dino`, `PowerMeter`, `SetupScreen`, `DifficultySelect`, `Result`, `Confetti`, `icons`.
+- `src/game/scores.js`: scoreboard rules (names, records, ranking). `src/game/scoreStore.js`: storage behind `list()` / `add()`.
+- `src/components/`: `Wheel`, `Dino`, `PowerMeter`, `SetupScreen`, `DifficultySelect`, `Scoreboard`, `Result`, `Confetti`, `icons`.
 - `src/game/*.test.js`: unit tests for the logic and reducer.

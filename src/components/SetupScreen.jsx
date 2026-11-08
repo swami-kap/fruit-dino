@@ -5,6 +5,7 @@ import {
   MIN_ATTEMPT_LIMIT,
   isValidAttemptLimit,
 } from '../game/logic.js'
+import { MAX_NAME_LENGTH, MIN_NAME_LENGTH, isValidName, normalizeName } from '../game/scores.js'
 import DifficultySelect from './DifficultySelect.jsx'
 
 const limitTextFor = (difficulty, maxAttempts) => {
@@ -13,14 +14,17 @@ const limitTextFor = (difficulty, maxAttempts) => {
   return fallback === null ? '' : String(fallback)
 }
 
-export default function SetupScreen({ initialDifficulty, initialMaxAttempts, onStart }) {
+export default function SetupScreen({ initialName, initialDifficulty, initialMaxAttempts, onStart, onShowScoreboard }) {
+  const [name, setName] = useState(initialName)
   const [difficulty, setDifficulty] = useState(initialDifficulty)
   const [limitText, setLimitText] = useState(limitTextFor(initialDifficulty, initialMaxAttempts))
 
   const { label, slices, meterPeriodMs, defaultMaxAttempts } = DIFFICULTIES[difficulty]
   const limited = defaultMaxAttempts !== null
   const parsed = limitText.trim() === '' ? NaN : Number(limitText)
-  const valid = !limited || isValidAttemptLimit(parsed)
+  const limitValid = !limited || isValidAttemptLimit(parsed)
+  const nameValid = isValidName(name)
+  const valid = limitValid && nameValid
 
   const handleDifficulty = (next) => {
     setDifficulty(next)
@@ -30,13 +34,30 @@ export default function SetupScreen({ initialDifficulty, initialMaxAttempts, onS
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!valid) return
-    onStart({ difficulty, maxAttempts: limited ? parsed : null })
+    onStart({ name: normalizeName(name), difficulty, maxAttempts: limited ? parsed : null })
   }
 
   return (
     <form className="setup" onSubmit={handleSubmit}>
       <h1 className="title">🦖 Fruit Dino</h1>
       <p className="setup__intro">Set the power, spin the wheel and feed the dino the fruit.</p>
+
+      <label className="setup__field">
+        <span>Your name</span>
+        <input
+          className="setup__name"
+          type="text"
+          value={name}
+          maxLength={MAX_NAME_LENGTH}
+          onChange={(e) => setName(e.target.value)}
+          aria-invalid={!nameValid}
+          autoComplete="off"
+          data-testid="player-name"
+        />
+        <small>
+          {MIN_NAME_LENGTH} to {MAX_NAME_LENGTH} characters
+        </small>
+      </label>
 
       <DifficultySelect value={difficulty} disabled={false} onChange={handleDifficulty} />
       <p className="setup__details">
@@ -54,11 +75,11 @@ export default function SetupScreen({ initialDifficulty, initialMaxAttempts, onS
             step={1}
             value={limitText}
             onChange={(e) => setLimitText(e.target.value)}
-            aria-invalid={!valid}
+            aria-invalid={!limitValid}
             data-testid="attempt-limit"
           />
-          <small className={valid ? '' : 'setup__error'}>
-            {valid
+          <small className={limitValid ? '' : 'setup__error'}>
+            {limitValid
               ? `${MIN_ATTEMPT_LIMIT} to ${MAX_ATTEMPT_LIMIT} (default ${defaultMaxAttempts})`
               : `Enter a whole number from ${MIN_ATTEMPT_LIMIT} to ${MAX_ATTEMPT_LIMIT}`}
           </small>
@@ -69,6 +90,9 @@ export default function SetupScreen({ initialDifficulty, initialMaxAttempts, onS
 
       <button className="btn btn--play" type="submit" disabled={!valid}>
         Play game
+      </button>
+      <button className="btn btn--small" type="button" onClick={onShowScoreboard}>
+        Scoreboard
       </button>
     </form>
   )

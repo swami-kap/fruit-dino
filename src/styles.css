@@ -594,3 +594,82 @@ body {
     margin-left: 40px;
   }
 }
+
+/* ---------- player name and scoreboard ---------- */
+
+.setup__field input.setup__name {
+  width: 16ch;
+  font-size: 1.1rem;
+}
+
+.player {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.save-note {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #2e7d32;
+}
+
+.save-note--error {
+  color: #c62828;
+}
+
+.board {
+  width: min(94vw, 460px);
+}
+
+.board__table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.board__table th,
+.board__table td {
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.board__table th {
+  background: #1d3557;
+  color: #fff;
+  font-size: 0.85rem;
+}
+
+.board__table tbody tr:nth-child(even) {
+  background: #f1f7ff;
+}
+
+.board__table tbody tr:first-child td {
+  font-weight: 800;
+  color: #b25e00;
+}
+
+.board__note {
+  margin: 0;
+  text-align: center;
+  font-weight: 700;
+}
+
+.board__note--error {
+  color: #c62828;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.board__note--error p {
+  margin: 0;
+}
+
+.board__total {
+  margin: 0;
+  font-size: 0.9rem;
+}
