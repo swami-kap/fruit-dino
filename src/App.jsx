@@ -96,6 +96,9 @@ export default function App() {
     <main className="app" style={{ '--eat-ms': `${EAT_MS}ms` }}>
       <h1 className="title">🦖 Fruit Dino</h1>
       <div className="modebar">
+        <span className="playerchip" data-testid="player" title={`Player: ${playerName}`}>
+          {playerName}
+        </span>
         <span className={`modechip modechip--${state.difficulty}`}>
           {label} · {slices} slices
         </span>
@@ -105,18 +108,14 @@ export default function App() {
         <button className="btn btn--small" onClick={() => setShowBoard(true)} disabled={busy}>
           Scoreboard
         </button>
+        <p className={`attempts${attemptsLeft === 1 ? ' attempts--last' : ''}${state.phase === 'lost' ? ' attempts--out' : ''}`}>
+          Attempts:{' '}
+          <strong data-testid="attempts">
+            {state.attempts}
+            {maxAttempts !== null && ` / ${maxAttempts}`}
+          </strong>
+        </p>
       </div>
-      <p className="player">
-        Player: <strong data-testid="player">{playerName}</strong>
-      </p>
-      <p className={`attempts${attemptsLeft === 1 ? ' attempts--last' : ''}${state.phase === 'lost' ? ' attempts--out' : ''}`}>
-        Attempts:{' '}
-        <strong data-testid="attempts">
-          {state.attempts}
-          {maxAttempts !== null && ` / ${maxAttempts}`}
-        </strong>
-      </p>
-
       <div className="stage">
         <Dino mood={mood} />
         <Wheel

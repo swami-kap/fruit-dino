@@ -1,7 +1,17 @@
 :root {
-  --wheel-size: min(78vw, 400px);
+  /* Shrinks on short windows so the whole game, STOP button included, fits without scrolling.
+     360px is the height of everything except the dino and wheel; 1.285 is the dino + wheel
+     stack in wheel-sizes. Never smaller than 180px. */
+  --wheel-size: min(78vw, 400px, max(180px, calc((100vh - 360px) / 1.285)));
   font-family: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
   color: #1d3557;
+}
+
+/* On narrow screens the mode bar wraps onto a second row (about 40px more). */
+@media (max-width: 640px) {
+  :root {
+    --wheel-size: min(78vw, 400px, max(180px, calc((100vh - 400px) / 1.285)));
+  }
 }
 
 * {
@@ -22,12 +32,12 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  padding: 18px 16px 120px;
+  padding: 18px 16px 24px;
 }
 
 .title {
   margin: 0;
-  font-size: clamp(2rem, 6vw, 3rem);
+  font-size: clamp(1.6rem, min(6vw, 4.5vh), 2.6rem);
   color: #ff6b00;
   text-shadow: 3px 3px 0 #fff, 5px 5px 0 #ffd93d;
 }
@@ -123,8 +133,22 @@ body {
 
 .modebar {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
   gap: 10px;
+}
+
+.playerchip {
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: #fff;
+  font-weight: 800;
+  box-shadow: 0 3px 0 #1d355733;
 }
 
 .modechip {
@@ -457,7 +481,8 @@ body {
 /* ---------- result, meter, buttons ---------- */
 
 .result {
-  min-height: 3.2rem;
+  /* Tall enough for the win/lose text plus the Play again button, so nothing jumps at game end. */
+  min-height: 5.3rem;
   text-align: center;
 }
 
@@ -566,7 +591,9 @@ body {
   height: 70px;
   background: repeating-linear-gradient(90deg, #5cc45e 0 40px, #4fb352 40px 80px);
   border-top: 6px solid #3a9a3d;
-  z-index: 0;
+  /* The ground is inside .app's stacking context. At z-index 0 it painted over the STOP
+     button; -1 keeps it behind all page content. */
+  z-index: -1;
 }
 
 .confetti {
@@ -602,16 +629,21 @@ body {
   font-size: 1.1rem;
 }
 
-.player {
-  margin: 0;
-  font-size: 1rem;
-}
-
 .save-note {
+  /* A corner toast, so showing it never changes the page height. */
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 20;
   margin: 0;
-  font-size: 0.95rem;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 3px 0 #1d355722;
+  font-size: 0.9rem;
   font-weight: 700;
   color: #2e7d32;
+  animation: fade-in 0.3s ease-out both;
 }
 
 .save-note--error {
