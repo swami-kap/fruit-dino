@@ -5,6 +5,7 @@ import {
   createRemoteScoreStore,
   loadSavedName,
   saveName,
+  withTab,
 } from './scoreStore.js'
 import {
   BOARD_SIZE,
@@ -245,5 +246,21 @@ describe('remote score store', () => {
     await local.add(rec())
     expect(await local.list()).toHaveLength(1)
     expect(await chooseScoreStore(undefined, fakeStorage()).list()).toEqual([])
+  })
+
+  it('adds the tab to the url only when one is set', () => {
+    expect(withTab(URL, '')).toBe(URL)
+    expect(withTab(URL, undefined)).toBe(URL)
+    expect(withTab(URL, ' bug ')).toBe(`${URL}?tab=bug`)
+    expect(withTab(`${URL}?x=1`, 'bug')).toBe(`${URL}?x=1&tab=bug`)
+  })
+
+  it('sends the tab on both list and add', async () => {
+    const urls = []
+    const fetchFn = async (u) => (urls.push(u), reply({ ok: true, records: [] }))
+    const store = createRemoteScoreStore(URL, fetchFn, 'bug')
+    await store.list()
+    await store.add(rec())
+    expect(urls).toEqual([`${URL}?tab=bug`, `${URL}?tab=bug`])
   })
 })

@@ -74,6 +74,8 @@ By default scores stay in one browser. To share them, deploy `scoreboard-apps-sc
 3. **Deploy > New deployment > Web app**: execute as **Me**, access **Anyone**. Copy the `/exec` URL.
 4. Copy `.env.example` to `.env.local`, set `VITE_SCOREBOARD_URL` to that URL, and restart `npm run dev`.
 
+To keep a second set of scores in the same Sheet (for example a bug-hunt build), set `VITE_SCOREBOARD_TAB=bug` at build time. The app then adds `?tab=bug` to every request and the script reads and writes the `Scores-bug` tab instead of `Scores`. Only `Scores` and `Scores-bug` are allowed. Redeploy the script with the updated `Code.gs` first: an older deployment ignores `?tab=` and would write to `Scores`.
+
 The endpoint is public and not authenticated: anyone with the URL can read scores or add valid-looking records. After editing the script, use **Deploy > Manage deployments > Edit > New version** so the same URL serves the change.
 
 ## Game states

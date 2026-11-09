@@ -4,18 +4,27 @@
 // GET  -> { ok: true, records: [...] }
 // POST -> body is one JSON record (sent as text/plain to avoid a CORS preflight)
 //         { name, difficulty, attempts, maxAttempts, won, at }
+//
+// Both accept ?tab=bug to use the 'Scores-bug' tab instead of 'Scores'. Only the tabs
+// listed in TABS are allowed, so callers cannot make the script create arbitrary tabs.
 
-var SHEET_NAME = 'Scores';
+var TABS = { '': 'Scores', bug: 'Scores-bug' };
 var HEADERS = ['at', 'name', 'difficulty', 'attempts', 'maxAttempts', 'won'];
 var DIFFICULTIES = ['easy', 'medium', 'hard'];
 var MAX_NAME_LENGTH = 20;
 var MAX_ATTEMPT_LIMIT = 20;
 
-function getSheet_() {
+// Sheet name for the ?tab= value, or null when the value is not allowed.
+function tabName_(e) {
+  var key = e && e.parameter && e.parameter.tab ? String(e.parameter.tab) : '';
+  return Object.prototype.hasOwnProperty.call(TABS, key) ? TABS[key] : null;
+}
+
+function getSheet_(name) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(SHEET_NAME);
+  var sheet = ss.getSheetByName(name);
   if (!sheet) {
-    sheet = ss.insertSheet(SHEET_NAME);
+    sheet = ss.insertSheet(name);
     sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
     // Keep time, name and mode as plain text so Sheets does not turn them into dates or numbers.
     sheet.getRange('A:C').setNumberFormat('@');
@@ -44,8 +53,10 @@ function validate_(r) {
   return null;
 }
 
-function doGet() {
-  var sheet = getSheet_();
+function doGet(e) {
+  var name = tabName_(e);
+  if (name === null) return json_({ ok: false, error: 'unknown tab' });
+  var sheet = getSheet_(name);
   var last = sheet.getLastRow();
   if (last < 2) return json_({ ok: true, records: [] });
   var rows = sheet.getRange(2, 1, last - 1, HEADERS.length).getValues();
@@ -63,6 +74,8 @@ function doGet() {
 }
 
 function doPost(e) {
+  var name = tabName_(e);
+  if (name === null) return json_({ ok: false, error: 'unknown tab' });
   var body;
   try {
     body = JSON.parse(e.postData.contents);
@@ -75,7 +88,7 @@ function doPost(e) {
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
-    getSheet_().appendRow([
+    getSheet_(name).appendRow([
       body.at,
       body.name.trim().replace(/\s+/g, ' '),
       body.difficulty,

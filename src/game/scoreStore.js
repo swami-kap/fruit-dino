@@ -48,7 +48,17 @@ export function createLocalScoreStore(storage) {
 
 // Shared scores in a Google Sheet through an Apps Script web app (see scoreboard-apps-script/).
 // POST uses text/plain so the browser sends a simple request with no CORS preflight.
-export function createRemoteScoreStore(url, fetchFn = (...args) => globalThis.fetch(...args)) {
+// Adds ?tab=<tab> so one script can serve more than one Sheet tab (e.g. 'bug').
+export function withTab(url, tab) {
+  const trimmed = typeof tab === 'string' ? tab.trim() : ''
+  if (!trimmed) return url
+  const u = new URL(url)
+  u.searchParams.set('tab', trimmed)
+  return u.toString()
+}
+
+export function createRemoteScoreStore(baseUrl, fetchFn = (...args) => globalThis.fetch(...args), tab = '') {
+  const url = withTab(baseUrl, tab)
   const readJson = async (res) => {
     if (!res.ok) throw new Error(`scoreboard request failed (${res.status})`)
     const data = await res.json()
@@ -75,14 +85,19 @@ export function createRemoteScoreStore(url, fetchFn = (...args) => globalThis.fe
 }
 
 // A non-empty url selects the shared store; otherwise scores stay in this browser.
-export function chooseScoreStore(url, storage) {
+export function chooseScoreStore(url, storage, tab = '') {
   const trimmed = typeof url === 'string' ? url.trim() : ''
-  return trimmed ? createRemoteScoreStore(trimmed) : createLocalScoreStore(storage ?? memoryStorage())
+  return trimmed
+    ? createRemoteScoreStore(trimmed, undefined, tab)
+    : createLocalScoreStore(storage ?? memoryStorage())
 }
 
 let store = null
 export function getScoreStore() {
-  if (!store) store = chooseScoreStore(import.meta.env?.VITE_SCOREBOARD_URL, browserStorage())
+  if (!store) {
+    const env = import.meta.env ?? {}
+    store = chooseScoreStore(env.VITE_SCOREBOARD_URL, browserStorage(), env.VITE_SCOREBOARD_TAB)
+  }
   return store
 }
 
