@@ -1,0 +1,65 @@
+# Deploys one tag or branch to GitHub Pages. Run it by hand from the Actions tab
+# ("Run workflow") and type the ref: v0-clean for the clean game, bug-final for the bug build.
+# Only one version is live at a time. Running it again replaces the live site.
+name: Deploy to GitHub Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Tag or branch to deploy (for example v0-clean or bug-final)
+        required: true
+        default: v0-clean
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      IS_BUG_BUILD: ${{ startsWith(inputs.ref, 'bug') }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Bug builds are expected to fail the tests, so only clean refs are tested.
+      - name: Test
+        if: env.IS_BUG_BUILD != 'true'
+        run: npm test
+
+      # --base is passed here so any older tag builds without a config change.
+      # Bug builds write to the Scores-bug tab; clean builds use the Scores tab.
+      - name: Build
+        run: npx vite build --base=/${{ github.event.repository.name }}/
+        env:
+          VITE_SCOREBOARD_URL: ${{ vars.VITE_SCOREBOARD_URL }}
+          VITE_SCOREBOARD_TAB: ${{ env.IS_BUG_BUILD == 'true' && 'bug' || '' }}
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

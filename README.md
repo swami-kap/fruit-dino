@@ -78,6 +78,16 @@ To keep a second set of scores in the same Sheet (for example a bug-hunt build),
 
 The endpoint is public and not authenticated: anyone with the URL can read scores or add valid-looking records. After editing the script, use **Deploy > Manage deployments > Edit > New version** so the same URL serves the change.
 
+## Deploy (GitHub Pages)
+
+`.github/workflows/deploy.yml` deploys one tag or branch at a time.
+
+1. One-time: **Settings > Pages > Source: GitHub Actions**.
+2. One-time: **Settings > Secrets and variables > Actions > Variables**, add `VITE_SCOREBOARD_URL` (the Apps Script `/exec` URL). It ends up in the public JavaScript.
+3. **Actions > Deploy to GitHub Pages > Run workflow**, enter the ref (`v0-clean`).
+
+Site: `https://<owner>.github.io/fruit-dino/`. Refs starting with `bug` are built with `VITE_SCOREBOARD_TAB=bug` (Scores-bug tab) and skip the tests. Running the workflow again replaces the live version.
+
 ## Game states
 
 `setup` (settings screen) → `idle` (meter running) → `spinning` (wheel turning) → `eating` (dino chomps) → back to `idle`, `won` on the fruit, or `lost` when the last attempt is used up on meat.
